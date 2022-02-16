@@ -12,8 +12,8 @@ exports.newWebSocketImpl = function runNewWebSocketImpl (params) {
     var contBinary = params.continueBinary({ url : socket.url, protocol : socket.protocol });
     var capabilities = {
         "send"              : function(m) {socket.send(m);},
-        "close"             : function() {socket.close();},
-        "close\'"           : function(xs) {socket.close(xs.code,xs.reason);},
+        "close"             : function() {},
+        "close\'"           : function(xs) {},
         "getBufferedAmount" : function() {return socket.bufferedAmount;}
     };
 
@@ -29,7 +29,6 @@ exports.newWebSocketImpl = function runNewWebSocketImpl (params) {
             reason: e.reason,
             wasClean: e.wasClean
         });
-        socket.close(e);
     });
 
     socket.addEventListener("error", function(e) {
