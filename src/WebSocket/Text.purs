@@ -1,8 +1,10 @@
 -- | This module relies on `purescript-text-encoding` and the `text-encoding` NPM module
 -- | for turning a String into an ArrayBuffer and vise-versa.
-
 module WebSocket.Text
-  (dimapTextEncoding, dimapTextDecoding, Encoding (..)) where
+  ( Encoding (..)
+  , dimapTextEncoding
+  , dimapTextDecoding
+  ) where
 
 import WebSocket (WebSocketsApp)
 
@@ -15,8 +17,6 @@ import Data.TextDecoding as TD
 import Data.TextEncoding as TE
 import Effect.Unsafe (unsafePerformEffect)
 import Effect.Exception (throwException)
-
-
 
 data Encoding
   = Utf8
@@ -35,25 +35,23 @@ toTe x = case x of
   Utf_16Be -> TE.Utf_16Be
   Utf_16Le -> TE.Utf_16Le
 
-
-
 dimapTextEncoding :: forall m
                    . Encoding
                   -> WebSocketsApp m String String
                   -> WebSocketsApp m ArrayBuffer ArrayBuffer
-dimapTextEncoding encoding = dimap (whole' (toTd encoding)) (TA.buffer <<< TE.encode (toTe encoding))
-
+dimapTextEncoding encoding =
+  dimap (whole' (toTd encoding)) (TA.buffer <<< TE.encode (toTe encoding))
 
 dimapTextDecoding :: forall m
                    . Encoding
                   -> WebSocketsApp m ArrayBuffer ArrayBuffer
                   -> WebSocketsApp m String String
-dimapTextDecoding encoding = dimap (TA.buffer <<< TE.encode (toTe encoding)) (whole' (toTd encoding))
-
+dimapTextDecoding encoding =
+  dimap (TA.buffer <<< TE.encode (toTe encoding)) (whole' (toTd encoding))
 
 whole' :: TD.Encoding -> ArrayBuffer -> String
 whole' encoding x = unsafePerformEffect do
   (buf :: Uint8Array) <- TA.whole x
   case TD.decode encoding buf of
-    Left e -> throwException e
+    Left e  -> throwException e
     Right y -> pure y

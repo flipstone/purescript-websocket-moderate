@@ -4,19 +4,22 @@ var platformSpecificWS = typeof module !== "undefined" && module.require
       ? module.require('ws')
       : WebSocket;
 
-
-exports.newWebSocketImpl = function runNewWebSocketImpl (params) {
+export function newWebSocketImpl(params) {
     var socket = new platformSpecificWS(params.url, params.protocols);
     socket.binaryType = params.binaryType;
-    var cont = params.continue({ url : socket.url, protocol : socket.protocol });
-    var contBinary = params.continueBinary({ url : socket.url, protocol : socket.protocol });
-    var capabilities = {
-        "send"              : function(m) {socket.send(m);},
-        "close"             : function() {socket.close();},
-        "close\'"           : function(xs) {socket.close(xs.code,xs.reason);},
-        "getBufferedAmount" : function() {return socket.bufferedAmount;}
-    };
+    var cont = params.continue({ url: socket.url, protocol: socket.protocol });
 
+    var contBinary = params.continueBinary({
+      url: socket.url,
+      protocol: socket.protocol
+    });
+
+    var capabilities = {
+        "send"             : function(m) { socket.send(m); },
+        "close"            : function() { socket.close(); },
+        "close\'"          : function(xs) { socket.close(xs.code,xs.reason); },
+        "getBufferedAmount": function() { return socket.bufferedAmount; }
+    };
 
     socket.addEventListener("close", function(e) {
         cont.onclose({
@@ -51,16 +54,15 @@ exports.newWebSocketImpl = function runNewWebSocketImpl (params) {
     });
 };
 
-
 function isBinaryImpl (f) {
     return function isBinaryImpl_ (d) {
         return d instanceof f;
     };
 };
 
+export const isBinaryArrayBufferImpl = isBinaryImpl(ArrayBuffer);
 
-exports.isBinaryArrayBufferImpl = isBinaryImpl(ArrayBuffer);
-exports.isBinaryBlobImpl = function(d) {
+export function isBinaryBlobImpl(d) {
     if(typeof Blob !== 'undefined') {
         return isBinaryImpl(Blob)(d);
     } else {

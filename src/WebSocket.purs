@@ -23,7 +23,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe)
 import Data.Nullable (Nullable, toMaybe, toNullable)
 import Data.Profunctor (class Profunctor)
-import Data.Symbol (SProxy(..), reflectSymbol, class IsSymbol)
+import Data.Symbol (reflectSymbol, class IsSymbol)
 import Effect (Effect)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Exception (Error, throw)
@@ -31,9 +31,6 @@ import Effect.Uncurried (EffectFn1, EffectFn2, runEffectFn1, mkEffectFn1, mkEffe
 import Foreign (Foreign)
 import Type.Proxy (Proxy(..))
 import Web.File.Blob (Blob)
-
-
-
 
 type Capabilities m send =
   { send              :: send -> m Unit
@@ -59,7 +56,9 @@ newtype WebSocketsApp m receive send = WebSocketsApp
     }
   )
 
-derive instance genericWebSocketsApp :: (Generic (m c) m', Generic a a', Generic b b') => Generic (WebSocketsApp m a b) _
+derive instance genericWebSocketsApp :: (Generic (m c) m', Generic a a', Generic b b')
+                                     => Generic (WebSocketsApp m a b) _
+
 instance profunctorWebSocketsApp :: Profunctor (WebSocketsApp m) where
   dimap receiveF sendF (WebSocketsApp continue) = WebSocketsApp \env ->
     let cont = continue env
@@ -74,7 +73,9 @@ instance profunctorWebSocketsApp :: Profunctor (WebSocketsApp m) where
         , onmessage: \cs x -> cont.onmessage (newCaps cs) (receiveF x)
         , onopen: cont.onopen <<< newCaps
         }
-instance semigroupWebSocketsApp :: Applicative m => Semigroup (WebSocketsApp m receive send) where
+
+instance semigroupWebSocketsApp :: Applicative m
+                                => Semigroup (WebSocketsApp m receive send) where
   append (WebSocketsApp f) (WebSocketsApp g) = WebSocketsApp \env ->
     let fCont = f env
         gCont = g env
@@ -83,14 +84,15 @@ instance semigroupWebSocketsApp :: Applicative m => Semigroup (WebSocketsApp m r
         , onmessage: \cs x -> fCont.onmessage cs x *> gCont.onmessage cs x
         , onopen: \cs -> fCont.onopen cs *> gCont.onopen cs
         }
-instance monoidWebSocketsApp :: Applicative m => Monoid (WebSocketsApp m receive send) where
+
+instance monoidWebSocketsApp :: Applicative m
+                             => Monoid (WebSocketsApp m receive send) where
   mempty = WebSocketsApp \_ ->
     { onclose: \_ -> pure unit
     , onerror: \_ -> pure unit
     , onmessage: \_ _ -> pure unit
     , onopen: \_ -> pure unit
     }
-
 
 hoistWebSocketsApp :: forall m n s r
                     . (forall a. m a -> n a)
@@ -111,7 +113,6 @@ hoistWebSocketsApp to from (WebSocketsApp f) = WebSocketsApp \env ->
       , close': from <<< close'
       , getBufferedAmount: from getBufferedAmount
       }
-
 
 dimap' :: forall m send receive send' receive'
         . Bind m
@@ -134,7 +135,6 @@ dimap' from to (WebSocketsApp f) = WebSocketsApp \env ->
       , send: send <<< to
       }
 
-
 dimapJson :: forall m send receive
            . EncodeJson send
           => DecodeJson receive
@@ -146,9 +146,7 @@ dimapJson = dimap' fromJson encodeJson
     fromJson :: Json -> m receive
     fromJson x = case decodeJson x of
       Right y -> pure y
-      Left e -> liftEffect (throw (printJsonDecodeError e))
-
-
+      Left  e -> liftEffect (throw (printJsonDecodeError e))
 
 dimapStringify :: forall m
                 . MonadEffect m
@@ -159,12 +157,10 @@ dimapStringify = dimap' fromJson stringify
     fromJson :: String -> m Json
     fromJson x = case jsonParser x of
       Right y -> pure y
-      Left e -> liftEffect (throw e)
+      Left e  -> liftEffect (throw e)
 
-
-
--- | Creates a new websocket, where the send and receive types are encoded and decoded as JSON strings
--- | internally.
+-- | Creates a new websocket, where the send and receive types are encoded and
+-- | decoded as JSON strings internally.
 newWebSocket :: forall send receive
               . DecodeJson receive
              => EncodeJson send
@@ -172,20 +168,23 @@ newWebSocket :: forall send receive
              -> Array String -- ^ Protocols
              -> WebSocketsApp Effect receive send
              -> Effect Unit
-newWebSocket url protocols app = newWebSocketString url protocols $ dimapStringify $ dimapJson app
+newWebSocket url protocols app =
+  newWebSocketString url protocols $ dimapStringify $ dimapJson app
 
 
--- | Creates a new websocket, where the send and receive types are monomorphically typed as a String.
+-- | Creates a new websocket, where the send and receive types are
+-- | monomorphically typed as a String.
 newWebSocketString :: String -- ^ Url
                    -> Array String -- ^ Protocols
                    -> WebSocketsApp Effect String String
                    -> Effect Unit
 newWebSocketString url protocols app =
-  newWebSocketBoth url protocols app (mempty :: WebSocketsApp Effect ArrayBuffer ArrayBuffer)
+  newWebSocketBoth url protocols app
+    (mempty :: WebSocketsApp Effect ArrayBuffer ArrayBuffer)
 
 
--- | Creates a new websocket, where the send and receive types are expected to be binary-compatible over
--- | the websocket (a `Blob` or `ArrayBuffer`).
+-- | Creates a new websocket, where the send and receive types are expected to
+-- | be binary-compatible over the websocket (a `Blob` or `ArrayBuffer`).
 newWebSocketBinary :: forall send receive binaryType
               . WebSocketBinary receive
              => WebSocketBinary send
@@ -198,10 +197,8 @@ newWebSocketBinary :: forall send receive binaryType
 newWebSocketBinary url protocols app =
   newWebSocketBoth url protocols mempty app
 
-
-
--- | Creates a new websocket, where binary data is handled by the binary app when available, otherwise
--- | handled by the string app by default.
+-- | Creates a new websocket, where binary data is handled by the binary app
+-- | when available, otherwise handled by the string app by default.
 newWebSocketBoth :: forall send receive binaryType
                   . WebSocketBinary send
                  => WebSocketBinary receive
@@ -216,7 +213,7 @@ newWebSocketBoth url protocols (WebSocketsApp continue) (WebSocketsApp continueB
   runEffectFn1 newWebSocketImpl
     { url
     , protocols
-    , binaryType: reflectSymbol (SProxy :: SProxy binaryType)
+    , binaryType: reflectSymbol (Proxy :: Proxy binaryType)
     , continue: \env ->
         let conts = continue env
         in  { onclose: mkEffectFn1 $ \{code,reason,wasClean} -> conts.onclose
@@ -236,8 +233,6 @@ newWebSocketBoth url protocols (WebSocketsApp continue) (WebSocketsApp continueB
     , isBinary: isBinary (Proxy :: Proxy receive)
     }
 
-
-
 -- * Impl
 
 type CapabilitiesImpl send =
@@ -247,15 +242,17 @@ type CapabilitiesImpl send =
   , getBufferedAmount :: Effect Int
   }
 
-
-runCapabilitiesImpl :: forall send. CapabilitiesImpl send -> Capabilities Effect send
+runCapabilitiesImpl :: forall send
+                     . CapabilitiesImpl send
+                    -> Capabilities Effect send
 runCapabilitiesImpl cs =
   { send: runEffectFn1 cs.send
   , close: cs.close
-  , close': \{code,reason} -> runEffectFn1 cs.close' {code: toNullable code, reason: toNullable reason}
+  , close': \{code,reason} -> runEffectFn1 cs.close' { code: toNullable code
+                                                     , reason: toNullable reason
+                                                     }
   , getBufferedAmount: cs.getBufferedAmount
   }
-
 
 type ParamsImpl binary binary' =
   { url       :: String
@@ -282,26 +279,19 @@ type ParamsImpl binary binary' =
   , isBinary :: Foreign -> Boolean
   }
 
-
-
-foreign import newWebSocketImpl :: forall binary binary'. EffectFn1 (ParamsImpl binary binary') Unit
-
-
-
-
+foreign import newWebSocketImpl :: forall binary binary'
+                                 . EffectFn1 (ParamsImpl binary binary') Unit
 
 class BinaryType (a :: Type) (binaryType :: Symbol) | a -> binaryType
 instance binaryTypeArrayBuffer :: BinaryType ArrayBuffer "arraybuffer"
 instance binaryTypeBlob :: BinaryType Blob "blob"
 
-
+class WebSocketBinary :: forall k. k -> Constraint
 class WebSocketBinary a where
   isBinary :: Proxy a -> Foreign -> Boolean
 
-
 foreign import isBinaryArrayBufferImpl :: Foreign -> Boolean
 foreign import isBinaryBlobImpl :: Foreign -> Boolean
-
 
 instance webSocketBinaryArrayBuffer :: WebSocketBinary ArrayBuffer where
   isBinary Proxy = isBinaryArrayBufferImpl
