@@ -16,8 +16,8 @@ export function newWebSocketImpl(params) {
 
     var capabilities = {
         "send"             : function(m) { socket.send(m); },
-        "close"            : function() { socket.close(); },
-        "close\'"          : function(xs) { socket.close(xs.code,xs.reason); },
+        "close"            : function() { /* socket.close(); */ },
+        "close\'"          : function(xs) { /* socket.close(xs.code,xs.reason); */ },
         "getBufferedAmount": function() { return socket.bufferedAmount; }
     };
 
