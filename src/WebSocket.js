@@ -32,7 +32,7 @@ export function newWebSocketImpl(params) {
             reason: e.reason,
             wasClean: e.wasClean
         });
-        socket.close(e);
+        //socket.close(e);
     });
 
     socket.addEventListener("error", function(e) {
